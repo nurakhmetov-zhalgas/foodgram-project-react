@@ -146,6 +146,17 @@ REST_FRAMEWORK = {
 
 }
 
-DJOSER = { # TODO просмотреть настройки Djoser
-    'LOGIN_FIELD': 'email',
+DJOSER = { 
+    "LOGIN_FIELD": 'email',
+    "HIDE_USERS": False,
+    "PERMISSIONS": {
+        "user_list": ["rest_framework.permissions.AllowAny"],
+        "user": ["rest_framework.permissions.IsAuthenticated"],
+    },
+    "SERIALIZERS": {
+        "current_user": "users.serializers.UserSerializer",
+        "user_create": "users.serializers.UserSerializer",
+        "user": "users.serializers.UserSerializer",
+        "user_list": "users.serializers.UserSerializer"
+    },
 }
