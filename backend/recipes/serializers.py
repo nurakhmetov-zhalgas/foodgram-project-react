@@ -53,7 +53,7 @@ class IngredientCreateSerializer(serializers.ModelSerializer):
 
 class IngredientRecipeSerializer(serializers.ModelSerializer):
     id = serializers.PrimaryKeyRelatedField(
-        source='ingredient', queryset=Ingredient.objects.all()
+        source='ingredient.id', queryset=Ingredient.objects.all()
     )
     measurement_unit = serializers.CharField(
         source='ingredient.measurement_unit', read_only=True
@@ -73,10 +73,14 @@ class IngredientRecipeSerializer(serializers.ModelSerializer):
 
 class RecipeListSerializer(serializers.ModelSerializer):    
     author = AuthorSerializer(read_only=True)
-    ingredients = IngredientRecipeSerializer(many=True)
+    ingredients = serializers.SerializerMethodField()
     tags = TagSerializer(many=True)
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
+
+    def get_ingredients(self, obj):
+        queryset = IngredientRecipe.objects.filter(recipe=obj)
+        return IngredientRecipeSerializer(queryset, many=True).data
 
     def get_is_favorited(self, obj):
         user = self.context.get("request").user
@@ -173,7 +177,7 @@ class RecipeSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
     def validate(self, data):
-        ingredient_data = self.initial_data.get("ingridients")
+        ingredient_data = self.initial_data.get("ingredients")
         ingredient_in_recipe = set()
         for ingredient in ingredient_data:
             ingredient_obj = get_object_or_404(Ingredient, id=ingredient["id"])
@@ -193,4 +197,15 @@ class RecipeSerializer(serializers.ModelSerializer):
             "image",
             "text",
             "cooking_time"
+        )
+
+
+class FollowRecipeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Recipe
+        fields = (
+            "id",
+            "name",
+            "image",
+            "cooking_time",
         )
