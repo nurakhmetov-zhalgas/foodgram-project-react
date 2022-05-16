@@ -3,15 +3,13 @@ import io
 from rest_framework import viewsets, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from django.http import FileResponse
+from django.http import FileResponse, HttpResponse
 from rest_framework.decorators import action
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models.aggregates import Sum
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfgen import canvas
+
 
 from .serializers import TagSerializer, IngredientSerializer, RecipeSerializer, FollowRecipeSerializer
 from .models import Tag, Ingredient, Recipe, Favorite, ShoppingCart, IngredientRecipe
@@ -110,46 +108,25 @@ class RecipeViewSet(viewsets.ModelViewSet):
         detail=False
     )
     def download_shopping_cart(self, request):
-        buffer = io.BytesIO()
-        page = canvas.Canvas(buffer)
-        pdfmetrics.registerFont(TTFont('Vera', 'Vera.ttf'))
-        x_pos, y_pos = 50, 800
-        page.setFont('Vera', 14)
         ingredientrecipe_list = IngredientRecipe.objects.filter(
             recipe__carts__user=request.user
         ).values("ingredient__name", "ingredient__measurement_unit").annotate(
             sum_amount=Sum("amount")
         )
+        content = ''
         if ingredientrecipe_list:
-            indent = 20
-            page.drawString(x_pos, y_pos, 'Список покупок')
             for index, item in enumerate(ingredientrecipe_list, start=1):
-                page.drawString(
-                    x_pos, y_pos - indent,
+                content += (
                     f'{index}. {item["ingredient__name"]} - '
                     f'{item["sum_amount"]} '
                     f'{item["ingredient__measurement_unit"]}'
                 )
-                y_pos -= 15
-                if y_pos <= 50:
-                    page.showPage()
-                    y_pos = 800
-            page.save()
-            buffer.seek(0)
-            return FileResponse(
-                buffer,
-                as_attachment=True,
-                filename='shoppingcart.pdf'
-            )
-        page.setFont('Vera', 24)
-        page.drawString(
-            x_pos, y_pos,
-            'Список покупок пустой.Empty'
-        )
-        page.save()
-        buffer.seek(0)
-        return FileResponse(
-            buffer,
-            as_attachment=True,
-            filename='shoppingcart.pdf'
+        else:
+            content += ('Список покупок пуст')
+        return HttpResponse(
+            content,
+            content_type='text/plai, charset=utf8',
+            headers={
+                'Content-Disposition': 'attachment; filename=shopping_cart.txt'
+            }
         )
